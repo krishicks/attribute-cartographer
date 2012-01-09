@@ -59,6 +59,10 @@ describe AttributeCartographer do
         it "creates an entry in mapped_attributes matching the key name" do
           klass.new("Attribute" => "Value").mapped_attributes["Attribute"].should == "Value"
         end
+
+        it "creates an entry in unmapped_attributes matching the key name" do
+          klass.new("Attribute" => "Value").unmapped_attributes["Attribute"].should == "Value"
+        end
       end
 
       context "and a 1-arity lambda" do
@@ -94,7 +98,7 @@ describe AttributeCartographer do
 
         context "with attributes matching the right key, passing the value through" do
           it "maps the right key to the left key" do
-            klass.new("attribute" => "Value").mapped_attributes["Attribute"].should == "Value"
+            klass.new("attribute" => "Value").unmapped_attributes["Attribute"].should == "Value"
           end
         end
       end
@@ -126,7 +130,7 @@ describe AttributeCartographer do
 
         context "with attributes matching the right key, passing the value through" do
           it "maps the right key to the left key, using the second lambda to map the value" do
-            klass.new("attribute" => "value").mapped_attributes["Attribute"].should == "VALUE"
+            klass.new("attribute" => "value").unmapped_attributes["Attribute"].should == "VALUE"
           end
         end
       end
@@ -134,6 +138,34 @@ describe AttributeCartographer do
       context "and a >1-arity lambda" do
         it "raises an error" do
           lambda { klass.map :a, :b, ->(k,v) { v + 1 } }.should raise_error(AttributeCartographer::InvalidArgumentError)
+        end
+      end
+
+      context "and two lambda where the attributes have identical keys" do
+        before { klass.map "attribute", "attribute", ->(v) { v.downcase }, ->(v) { v.upcase } }
+
+        context "with attributes matching the left key" do
+          it "maps the left key to the right key, using the first lambda to map the value" do
+            klass.new("attribute" => "Value").mapped_attributes["attribute"].should == "value"
+          end
+
+          it "maps the right key to the left key, using the second lambda to map the value" do
+            klass.new("attribute" => "Value").unmapped_attributes["attribute"].should == "VALUE"
+          end
+        end
+      end
+
+      context "and two lambda where the attributes have identical keys but map different types" do
+        before { klass.map "attribute", "attribute", ->(v) { v.split('') }, ->(v) { v.join('') } }
+
+        context "with attributes matching the left key" do
+          it "maps the left key to the right key, using the first lambda to map the value" do
+            klass.new("attribute" => "Va").mapped_attributes["attribute"].should == ['V', 'a']
+          end
+
+          it "maps the right key to the left key, using the second lambda to map the value" do
+            klass.new("attribute" => ["V", "a"]).unmapped_attributes["attribute"].should == "Va"
+          end
         end
       end
     end
